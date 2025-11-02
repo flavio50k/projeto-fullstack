@@ -6,7 +6,8 @@
 # NodeJS
 # Se o seu backend é Node.js, ignore a pasta de dependências
 node_modules/
-
+backend/node_modules/
+frontend/node_modules/
 # Logs e Cache de Pacotes
 npm-debug.log
 .npm/
