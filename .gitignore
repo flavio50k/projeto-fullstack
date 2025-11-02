@@ -1,0 +1,46 @@
+# ------------------------------------
+# 1. DEPENDÊNCIAS DE PROJETOS (Back/Front)
+# Serão reconstruídas via Docker ou NPM/Yarn.
+# ------------------------------------
+
+# NodeJS
+# Se o seu backend é Node.js, ignore a pasta de dependências
+node_modules/
+
+# Logs e Cache de Pacotes
+npm-debug.log
+.npm/
+.yarn/
+*.log
+
+# ------------------------------------
+# 2. DADOS E CONFIGURAÇÕES SENSÍVEIS
+# O .env contém senhas do MySQL e outras chaves.
+# O arquivo .env.example deve ser versionado (opcional, veja abaixo).
+# ------------------------------------
+
+.env
+
+# ------------------------------------
+# 3. DADOS E ARTEFATOS DO DOCKER
+# ------------------------------------
+
+# Volumes de Dados do MySQL
+# O Docker salva os dados do seu MySQL aqui.
+# NÃO versionar dados binários! Verifique o nome do seu volume.
+# Se no seu docker-compose.yml estiver 'db-data:', ignore essa pasta.
+db-data/
+data/mysql/
+
+# Arquivos gerados pelo Docker Compose
+.dockerignore
+!docker-compose.yml
+!docker-compose.*.yml
+
+# ------------------------------------
+# 4. ARTEFATOS DO SISTEMA OPERACIONAL
+# Essenciais para portabilidade (especialmente para MacOS)
+# ------------------------------------
+
+.DS_Store  # Arquivos do macOS
+Thumbs.db  # Arquivos do Windows
