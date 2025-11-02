@@ -1,0 +1,78 @@
+version: '3.8'
+
+services:
+  # 1. Container do Banco de Dados MySQL
+  db:
+    image: mysql:8.0
+    container_name: mysql_db
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD} # Pega do .env
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql # Persistência dos dados
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      timeout: 20s
+      retries: 10
+      start_period: 10s
+
+  # 2. Container do Backend (Node.js com Hot-Reload)
+  backend:
+    build:
+      context: ./backend 
+    container_name: backend_app
+    ports:
+      - "3000:3000" 
+    volumes:
+      - ./backend:/usr/src/app 
+      - backend_node_modules:/usr/src/app/node_modules
+    depends_on:
+      db:
+        condition: service_healthy # Espera o MySQL estar pronto
+    environment:
+      # Variáveis de Conexão (DB_HOST é o nome do serviço 'db')
+      DB_HOST: db 
+      DB_USER: root
+      DB_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      DB_NAME: ${MYSQL_DATABASE}
+    # Comando final para instalar dependências e rodar com Nodemon
+    command: sh -c "npm install && npm run dev"
+
+  # 3. Container do Frontend (Nginx para servir estático)
+  frontend:
+    image: nginx:alpine # Imagem Nginx estável e leve
+    container_name: frontend_web
+    ports:
+      - "8080:80" # Mapeia a porta 80 do container para 8080 do host
+    volumes:
+      # Monta a pasta local do frontend no local onde o Nginx serve arquivos.
+      # Usamos a porta 80 do container.
+      - ./frontend:/usr/share/nginx/html:ro 
+    restart: always
+    
+# 4. Container de Gerenciamento do Banco de Dados (phpMyAdmin)
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin
+    container_name: phpmyadmin_tool
+    restart: always
+    environment:
+      # phpMyAdmin precisa saber para qual servidor MySQL conectar.
+      # Usamos o nome do serviço: 'db'
+      PMA_HOST: db 
+      # phpMyAdmin acessa o DB com as credenciais do root que definimos no .env
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD} 
+    ports:
+      # Mapeia a porta 8081 do seu host para a porta 80 do container
+      - "8081:80" 
+    depends_on:
+      db:
+        condition: service_healthy
+
+# Volumes de persistência (dados e cache)
+volumes:
+  mysql_data:
+  backend_node_modules:
+  frontend_node_modules:
