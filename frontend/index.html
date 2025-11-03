@@ -1,34 +1,42 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Projeto FullStack - Lista de Tarefas (CRUD)</title>
     <style>
-        body { font-family: Arial, sans-serif; margin: 20px; }
-        .task-item { 
-            border: 1px solid #ccc; 
-            padding: 10px; 
-            margin-bottom: 10px; 
-            border-radius: 5px; 
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+
+        .task-item {
+            border: 1px solid #ccc;
+            padding: 10px;
+            margin-bottom: 10px;
+            border-radius: 5px;
             background-color: #f9f9f9;
         }
-        .task-item.completed { 
-            text-decoration: line-through; 
+
+        .task-item.completed {
+            text-decoration: line-through;
             background-color: #e6ffe6;
             color: #555;
         }
     </style>
 </head>
+
 <body>
     <h1>📋 Lista de Tarefas FullStack</h1>
     <p>O Backend (Node) e o Banco de Dados (MySQL) estão integrados!</p>
 
     <hr>
-    
+
     <h2>Adicionar Nova Tarefa</h2>
     <form id="task-form">
-        <input type="text" id="task-title" placeholder="Descreva a nova tarefa..." required style="padding: 10px; width: 300px;">
+        <input type="text" id="task-title" placeholder="Descreva a nova tarefa..." required
+            style="padding: 10px; width: 300px;">
         <button type="submit" style="padding: 10px;">Adicionar</button>
     </form>
 
@@ -39,135 +47,224 @@
         <p>Carregando tarefas...</p>
     </div>
 
-<script>
-    const API_BASE_URL = 'http://localhost:3000/api/tasks';
-    const tasksList = document.getElementById('tasks-list');
-    const taskForm = document.getElementById('task-form');
-    const taskTitleInput = document.getElementById('task-title');
+    <script>
+        const API_BASE_URL = 'http://localhost:3000/api/tasks';
+        const tasksList = document.getElementById('tasks-list');
+        const taskForm = document.getElementById('task-form');
+        const taskTitleInput = document.getElementById('task-title');
 
-    // --- ROTA UPDATE (PUT) ---
-    async function toggleComplete(id, currentStatus) {
-        const newStatus = !currentStatus;
+        // --- ROTA UPDATE (TOGGLE COMPLETED) ---
+        async function toggleComplete(id, currentTitle, currentStatus) {
+            const newStatus = !currentStatus;
 
-        try {
-            const response = await fetch(`${API_BASE_URL}/${id}`, {
-                method: 'PUT',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ completed: newStatus })
-            });
+            try {
+                const response = await fetch(`${API_BASE_URL}/${id}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    // Envia o title também (embora o Model já corrija, é mais seguro)
+                    body: JSON.stringify({
+                        title: currentTitle,
+                        completed: newStatus
+                    })
+                });
 
-            if (response.ok) {
-                console.log(`Tarefa ID ${id} atualizada para completed: ${newStatus}`);
-                fetchAndRenderTasks(); // Recarrega a lista para mostrar o novo status
-            } else if (response.status === 404) {
-                alert('Erro: Tarefa não encontrada.');
-            } else {
-                alert('Falha ao atualizar tarefa.');
+                if (response.ok) {
+                    fetchAndRenderTasks();
+                } else if (response.status === 400) {
+                    alert('Erro de validação (400) ao alternar status.');
+                } else if (response.status === 404) {
+                    alert('Erro: Tarefa não encontrada.');
+                } else {
+                    alert('Falha ao atualizar status.');
+                }
+            } catch (error) {
+                console.error("Erro ao atualizar status:", error);
+                alert('Erro de rede ao atualizar status.');
             }
-        } catch (error) {
-            console.error("Erro ao atualizar tarefa:", error);
-            alert('Erro de rede ao atualizar tarefa.');
-        }
-    }
-
-
-    // --- ROTA DELETE (DELETE) ---
-    async function deleteTask(id) {
-        if (!confirm(`Tem certeza que deseja excluir a tarefa ID ${id}?`)) {
-            return;
         }
 
-        try {
-            const response = await fetch(`${API_BASE_URL}/${id}`, {
-                method: 'DELETE'
-            });
+        // --- NOVA: ROTA UPDATE (EDITAR TÍTULO) ---
+        async function saveEdit(id, inputElement) {
+            const newTitle = inputElement.value.trim();
 
-            if (response.status === 204) {
-                console.log(`Tarefa ID ${id} deletada com sucesso.`);
-                fetchAndRenderTasks(); // Recarrega a lista
-            } else if (response.status === 404) {
-                alert('Erro: Tarefa não encontrada.');
-            } else {
-                alert('Falha ao excluir tarefa.');
-            }
-        } catch (error) {
-            console.error("Erro ao deletar tarefa:", error);
-            alert('Erro de rede ao excluir tarefa.');
-        }
-    }
-
-    // --- ROTA READ (GET) ---
-    async function fetchAndRenderTasks() {
-        tasksList.innerHTML = '<p>Carregando tarefas...</p>';
-        try {
-            const response = await fetch(API_BASE_URL);
-            if (!response.ok) throw new Error('Falha ao buscar dados da API.');
-            
-            const tasks = await response.json();
-
-            if (tasks.length === 0) {
-                tasksList.innerHTML = '<p>Nenhuma tarefa cadastrada. Adicione uma acima!</p>';
+            // 1. Validação básica de front-end
+            if (newTitle.length < 3) {
+                alert('O título deve ter pelo menos 3 caracteres.');
                 return;
             }
 
-            tasksList.innerHTML = ''; // Limpa o "Carregando"
-            tasks.forEach(task => {
-                const taskDiv = document.createElement('div');
-                taskDiv.className = `task-item ${task.completed ? 'completed' : ''}`;
-                
-                // O evento de clique (onclick) chama a nova função toggleComplete
-                taskDiv.innerHTML = `
-                    <div style="display: flex; justify-content: space-between; align-items: center;">
-                        <span 
-                            onclick="toggleComplete(${task.id}, ${task.completed})" 
-                            style="cursor: pointer; flex-grow: 1;">
-                            <strong>${task.title}</strong> 
-                        </span>
-                        <button onclick="deleteTask(${task.id})" style="color: white; background-color: red; border: none; padding: 5px 10px; cursor: pointer;">Excluir</button>
-                    </div>
-                    <small>ID: ${task.id} - Criada em: ${new Date(task.created_at).toLocaleDateString()}</small>
-                `;
-                tasksList.appendChild(taskDiv);
-            });
+            try {
+                const response = await fetch(`${API_BASE_URL}/${id}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    // Envia APENAS o título (completed será nulo, mas o Model não se importa)
+                    body: JSON.stringify({ title: newTitle })
+                });
 
-        } catch (error) {
-            console.error("Erro ao carregar tarefas:", error);
-            tasksList.innerHTML = `<p style="color: red;">Erro ao conectar à API: ${error.message}. Verifique se o Backend está ativo na porta 3000.</p>`;
-        }
-    }
-
-    // --- ROTA CREATE (POST) ---
-    taskForm.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const title = taskTitleInput.value.trim();
-        if (!title) return;
-
-        try {
-            const response = await fetch(API_BASE_URL, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ title })
-            });
-
-            if (response.status === 201) {
-                taskTitleInput.value = ''; // Limpa o input
-                fetchAndRenderTasks(); // Recarrega a lista para mostrar a nova tarefa
-            } else {
-                alert('Falha ao criar tarefa.');
+                if (response.ok) {
+                    fetchAndRenderTasks(); // Recarrega a lista
+                } else if (response.status === 400) {
+                    alert('Erro de validação (400) ao salvar título. Verifique o tamanho do texto.');
+                } else if (response.status === 404) {
+                    alert('Erro: Tarefa não encontrada.');
+                } else {
+                    alert('Falha ao salvar edição.');
+                }
+            } catch (error) {
+                console.error("Erro ao salvar edição:", error);
+                alert('Erro de rede ao salvar edição.');
             }
-        } catch (error) {
-            console.error("Erro ao enviar tarefa:", error);
-            alert('Erro de rede ao conectar à API.');
         }
-    });
 
-    // Inicia o carregamento das tarefas quando a página é carregada
-    fetchAndRenderTasks();
-</script>
+        // --- NOVA: Ativa o modo de edição (Substitui o texto por um input) ---
+        function handleEdit(id, currentTitle, taskDiv) {
+            // A tag pai que continha o título e o onclick de toggle
+            const titleContainer = taskDiv.querySelector('.task-title-display');
+            const actionButtons = taskDiv.querySelector('.task-action-buttons');
+
+            // Remove o onclick de toggle
+            titleContainer.removeAttribute('onclick');
+            titleContainer.style.cursor = 'default';
+
+            // Substitui o conteúdo pelo formulário de edição
+            titleContainer.innerHTML = `
+        <input 
+            type="text" 
+            id="edit-input-${id}" 
+            value="${currentTitle.trim()}" 
+            style="padding: 5px; width: 80%;"
+            onkeypress="if(event.key === 'Enter') { saveEdit(${id}, this); return false; }"
+        >
+    `;
+
+            // Atualiza os botões de ação para Salvar/Cancelar
+            actionButtons.innerHTML = `
+        <button 
+            onclick="saveEdit(${id}, document.getElementById('edit-input-${id}'))" 
+            style="padding: 5px 10px; background-color: green; color: white; border: none; cursor: pointer; margin-right: 5px;">
+            Salvar
+        </button>
+        <button onclick="fetchAndRenderTasks()" style="padding: 5px 10px; cursor: pointer;">
+            Cancelar
+        </button>
+    `;
+        }
+
+        // --- ROTA DELETE (DELETE) ---
+        async function deleteTask(id) {
+            if (!confirm(`Tem certeza que deseja excluir a tarefa ID ${id}?`)) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/${id}`, {
+                    method: 'DELETE'
+                });
+
+                if (response.status === 204) {
+                    fetchAndRenderTasks();
+                } else if (response.status === 404) {
+                    alert('Erro: Tarefa não encontrada.');
+                } else {
+                    alert('Falha ao excluir tarefa.');
+                }
+            } catch (error) {
+                console.error("Erro ao deletar tarefa:", error);
+                alert('Erro de rede ao excluir tarefa.');
+            }
+        }
+
+        // --- ROTA READ (GET) ---
+        async function fetchAndRenderTasks() {
+            tasksList.innerHTML = '<p>Carregando tarefas...</p>';
+            try {
+                const response = await fetch(API_BASE_URL);
+                if (!response.ok) throw new Error('Falha ao buscar dados da API.');
+
+                const tasks = await response.json();
+
+                if (tasks.length === 0) {
+                    tasksList.innerHTML = '<p>Nenhuma tarefa cadastrada. Adicione uma acima!</p>';
+                    return;
+                }
+
+                tasksList.innerHTML = '';
+                tasks.forEach(task => {
+                    const taskDiv = document.createElement('div');
+                    taskDiv.className = `task-item ${task.completed ? 'completed' : ''}`;
+
+                    // Tratamento para garantir que o título não quebre o HTML (escapa aspas)
+                    const taskTitleSafe = task.title.trim().replace(/'/g, "\\'").replace(/"/g, '\\"');
+
+                    taskDiv.innerHTML = `
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <span 
+                        class="task-title-display"
+                        onclick="toggleComplete(${task.id}, '${taskTitleSafe}', ${task.completed})" 
+                        style="cursor: pointer; flex-grow: 1;">
+                        <strong>${task.title}</strong> 
+                    </span>
+                    
+                    <div class="task-action-buttons">
+                        <button 
+                            onclick="handleEdit(${task.id}, '${taskTitleSafe}', this.closest('.task-item'))" 
+                            style="color: white; background-color: blue; border: none; padding: 5px 10px; cursor: pointer; margin-right: 5px;">
+                            Editar
+                        </button>
+                        <button onclick="deleteTask(${task.id})" style="color: white; background-color: red; border: none; padding: 5px 10px; cursor: pointer;">
+                            Excluir
+                        </button>
+                    </div>
+                </div>
+                <small>ID: ${task.id} - Criada em: ${new Date(task.created_at).toLocaleDateString()}</small>
+            `;
+                    tasksList.appendChild(taskDiv);
+                });
+
+            } catch (error) {
+                console.error("Erro ao carregar tarefas:", error);
+                tasksList.innerHTML = `<p style="color: red;">Erro ao conectar à API: ${error.message}. Verifique se o Backend está ativo na porta 3000.</p>`;
+            }
+        }
+
+        // --- ROTA CREATE (POST) ---
+        taskForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const title = taskTitleInput.value.trim();
+            if (!title) return;
+
+            try {
+                const response = await fetch(API_BASE_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ title })
+                });
+
+                if (response.status === 201) {
+                    taskTitleInput.value = '';
+                    fetchAndRenderTasks();
+                } else if (response.status === 400) {
+                    const errorBody = await response.json();
+                    alert(`Erro: ${errorBody.message}`);
+                } else {
+                    alert('Falha ao criar tarefa.');
+                }
+            } catch (error) {
+                console.error("Erro ao enviar tarefa:", error);
+                alert('Erro de rede ao conectar à API.');
+            }
+        });
+
+        // Inicia o carregamento das tarefas
+        fetchAndRenderTasks();
+    </script>
 
 </body>
+
 </html>

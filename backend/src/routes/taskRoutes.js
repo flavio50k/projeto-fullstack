@@ -1,14 +1,24 @@
-// ./backend/src/routes/taskRoutes.js
 const express = require('express');
-const router = express.Router();
 const taskController = require('../controllers/taskController');
+const { validateBody } = require('../middlewares/taskValidation');
 
-// Rotas para /api/tasks
-router.get('/', taskController.listTasks); // GET /api/tasks
-router.post('/', taskController.createTask); // POST /api/tasks
+// 1. Cria a instância do roteador
+const router = express.Router();
 
-// Rotas para /api/tasks/:id
-router.put('/:id', taskController.updateTask); // PUT /api/tasks/:id
-router.delete('/:id', taskController.deleteTask); // DELETE /api/tasks/:id
+// 2. Define as rotas usando o router
+// READ - GET /tasks
+router.get('/', taskController.getAll); 
 
+// CREATE - POST /tasks
+// Aplica o middleware de validação antes de chamar o controller
+router.post('/', validateBody, taskController.createTask);
+
+// DELETE - DELETE /tasks/:id
+router.delete('/:id', taskController.deleteTask);
+
+// UPDATE - PUT /tasks/:id
+// Aplica o middleware de validação antes de atualizar
+router.put('/:id', validateBody, taskController.updateTask);
+
+// 3. Exporta o roteador para ser usado no server.js
 module.exports = router;

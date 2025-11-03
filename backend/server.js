@@ -1,35 +1,32 @@
-// ./backend/server.js (Novo e Limpo)
 const express = require('express');
 const cors = require('cors');
-// Importa o arquivo de configuração do banco de dados (que também inicia a conexão)
+require('express-async-errors');
+const taskRoutes = require('./src/routes/taskRoutes'); 
+const errorMiddleware = require('./src/middlewares/errorMiddleware');
+
+// Garante que a conexão com o DB seja estabelecida antes de começar a ouvir
 require('./src/config/database'); 
-const taskRoutes = require('./src/routes/taskRoutes');
 
 const app = express();
 const port = 3000;
 
-// Middleware de Configuração
-app.use(express.json()); 
+// Middleware global
 app.use(cors()); 
+app.use(express.json()); 
 
-// --- Rotas da Aplicação ---
-app.use('/api/tasks', taskRoutes); // Todas as rotas de Tarefas
+// =========================================================
+// ROTEAMENTO
+// =========================================================
 
-// Rota de teste de conexão (Mantida como teste básico)
-// Requer o pool de conexão para funcionar, por isso o código é um pouco mais longo
-const pool = require('./src/config/database'); 
-app.get('/api/data', async (req, res) => {
-    try {
-        const [rows] = await pool.execute('SELECT "Conexão FullStack OK!" AS message, NOW() as timestamp');
-        res.json({
-            message: rows[0].message,
-            timestamp: rows[0].timestamp
-        });
-    } catch (error) {
-        res.status(500).json({ error: "Falha na conexão com o DB." });
-    }
-});
+// Configura o roteador de tarefas
+app.use('/api/tasks', taskRoutes); 
 
+// =========================================================
+// TRATAMENTO DE ERROS (DEVE SER O ÚLTIMO MIDDLEWARE)
+// =========================================================
+
+// Captura qualquer erro que tenha sido lançado (throw) nas rotas ou controllers.
+app.use(errorMiddleware); // NOVO
 
 // Inicia o servidor Express
 app.listen(port, () => {

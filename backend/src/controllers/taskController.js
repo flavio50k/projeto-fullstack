@@ -1,71 +1,64 @@
-// ./backend/src/controllers/taskController.js
-const Task = require('../models/Task');
+const taskModel = require('../models/TaskModel');
 
-const taskController = {
-    // READ
-    listTasks: async (req, res) => {
-        try {
-            const tasks = await Task.findAll();
-            res.json(tasks);
-        } catch (error) {
-            console.error("Erro ao listar tarefas:", error.message);
-            res.status(500).json({ error: "Falha ao buscar tarefas no banco de dados." });
-        }
-    },
-
-    // CREATE
-    createTask: async (req, res) => {
-        const { title } = req.body;
-        if (!title) {
-            return res.status(400).json({ error: "O campo 'title' é obrigatório." });
-        }
-        try {
-            const newTask = await Task.create(title);
-            res.status(201).json(newTask);
-        } catch (error) {
-            console.error("Erro ao inserir tarefa:", error.message);
-            res.status(500).json({ error: "Falha ao criar tarefa no banco de dados." });
-        }
-    },
-
-    // UPDATE
-    updateTask: async (req, res) => {
-        const { id } = req.params;
-        const { completed } = req.body; 
-
-        if (typeof completed === 'undefined') {
-            return res.status(400).json({ error: "O campo 'completed' é obrigatório para atualização." });
-        }
-
-        try {
-            const affectedRows = await Task.update(id, completed);
-
-            if (affectedRows === 0) {
-                return res.status(404).json({ error: "Tarefa não encontrada." });
-            }
-            res.status(200).json({ message: "Tarefa atualizada com sucesso." });
-        } catch (error) {
-            console.error("Erro ao atualizar tarefa:", error.message);
-            res.status(500).json({ error: "Falha ao atualizar tarefa no banco de dados." });
-        }
-    },
-
-    // DELETE
-    deleteTask: async (req, res) => {
-        const { id } = req.params;
-
-        try {
-            const affectedRows = await Task.delete(id);
-
-            if (affectedRows === 0) {
-                return res.status(404).json({ error: "Tarefa não encontrada." });
-            }
-            res.status(204).send();
-        } catch (error) {
-            console.error("Erro ao deletar tarefa:", error.message);
-            res.status(500).json({ error: "Falha ao deletar tarefa no banco de dados." });
-        }
+// 1. Controller para listar todas as tarefas
+const getAll = async (req, res) => {
+    try {
+        const tasks = await taskModel.getAll();
+        return res.status(200).json(tasks);
+    } catch (error) {
+        console.error("Erro ao buscar tarefas:", error);
+        return res.status(500).json({ message: 'Erro interno do servidor ao buscar tarefas.' });
     }
 };
 
-module.exports = taskController;
+// 2. Controller para criar uma nova tarefa
+const createTask = async (req, res) => {
+    try {
+        // Pega o corpo da requisição
+        const createdTask = await taskModel.createTask(req.body);
+        // Retorna a tarefa criada, incluindo o ID (inserido pelo Model)
+        return res.status(201).json(createdTask);
+    } catch (error) {
+        console.error("Erro ao criar tarefa:", error);
+        return res.status(500).json({ message: 'Erro interno do servidor ao criar tarefa.' });
+    }
+};
+
+// 3. Controller para deletar uma tarefa
+const deleteTask = async (req, res) => {
+    const { id } = req.params;
+    try {
+        await taskModel.deleteTask(id);
+        // Resposta 204 (No Content) é padrão para sucesso sem corpo de resposta
+        return res.status(204).end();
+    } catch (error) {
+        console.error(`Erro ao deletar tarefa ID ${id}:`, error);
+        return res.status(500).json({ message: 'Erro interno do servidor ao deletar tarefa.' });
+    }
+};
+
+// 4. Controller para atualizar uma tarefa
+const updateTask = async (req, res) => {
+    const { id } = req.params;
+    try {
+        const result = await taskModel.updateTask(id, req.body);
+        
+        // Verifica se a atualização afetou alguma linha (se afetou 0, o ID não existia)
+        if (result.affectedRows === 0) {
+             return res.status(404).json({ message: 'Tarefa não encontrada.' });
+        }
+        
+        // Se afetou 1 linha (sucesso), retorna 204
+        return res.status(204).end(); 
+    } catch (error) {
+        console.error(`Erro ao atualizar tarefa ID ${id}:`, error);
+        return res.status(500).json({ message: 'Erro interno do servidor ao atualizar tarefa.' });
+    }
+};
+
+module.exports = {
+    getAll,
+    createTask,
+    deleteTask,
+    updateTask,
+};
