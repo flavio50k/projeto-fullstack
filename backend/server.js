@@ -2,6 +2,7 @@ const express = require('express');
 const cors = require('cors');
 require('express-async-errors');
 const taskRoutes = require('./src/routes/taskRoutes'); 
+const userRoutes = require('./src/routes/userRoutes');
 const errorMiddleware = require('./src/middlewares/errorMiddleware');
 
 // Garante que a conexão com o DB seja estabelecida antes de começar a ouvir
@@ -17,6 +18,9 @@ app.use(express.json());
 // =========================================================
 // ROTEAMENTO
 // =========================================================
+
+// Rotas de Autenticação
+app.use('/api/users', userRoutes);
 
 // Configura o roteador de tarefas
 app.use('/api/tasks', taskRoutes); 

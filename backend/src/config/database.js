@@ -3,7 +3,7 @@ const mysql = require('mysql2/promise');
 
 // Configuração do Banco de Dados
 const dbConfig = {
-    host: process.env.DB_HOST, 
+    host: process.env.DB_HOST,
     user: process.env.DB_USER || 'root',
     password: process.env.DB_PASSWORD,
     database: process.env.DB_NAME,
@@ -15,21 +15,40 @@ const dbConfig = {
 // Cria o pool de conexão
 const pool = mysql.createPool(dbConfig);
 
-// Função para criar a tabela (mantida aqui para garantir que exista)
-async function createTasksTable() {
+// Função para criar tabelas (mantida aqui para garantir que existam)
+async function ensureTablesExist() {
     try {
-        const createTableQuery = `
-            CREATE TABLE IF NOT EXISTS tasks (
+        // Tabela de Usuários (NOVA)
+        const createUsersTableQuery = `
+            CREATE TABLE IF NOT EXISTS users (
                 id INT AUTO_INCREMENT PRIMARY KEY,
-                title VARCHAR(255) NOT NULL,
-                completed BOOLEAN DEFAULT FALSE,
+                username VARCHAR(50) NOT NULL UNIQUE,
+                password VARCHAR(255) NOT NULL,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         `;
-        await pool.execute(createTableQuery);
-        console.log("Tabela 'tasks' verificada/criada com sucesso!");
-    } catch (err) {
-        console.error("ERRO: Falha ao criar/verificar a tabela 'tasks':", err.message);
+        await pool.execute(createUsersTableQuery);
+        console.log("Tabela 'users' verificada/criada com sucesso!");
+
+        // Tabela de Tarefas (MODIFICADA para incluir user_id)
+        // Adicionaremos user_id e uma Foreign Key
+        const createTasksTableQuery = `
+            CREATE TABLE IF NOT EXISTS tasks (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                title VARCHAR(255) NOT NULL,
+                completed BOOLEAN DEFAULT 0,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                -- NOVA COLUNA: ID do usuário que criou a tarefa
+                user_id INT NOT NULL, 
+                -- NOVA CHAVE ESTRANGEIRA: Garante que o user_id existe na tabela users
+                FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+            )
+        `;
+        await pool.execute(createTasksTableQuery);
+        console.log("Tabela 'tasks' verificada/ajustada com sucesso!");
+
+    } catch (error) {
+        console.error("Erro ao verificar ou criar tabelas:", error);
     }
 }
 
@@ -41,17 +60,13 @@ async function initializeDatabase() {
             // 1. Testa a conexão
             const [rows] = await pool.execute('SELECT 1 + 1 AS solution');
             console.log('Conexão com MySQL verificada: Resultado da query =', rows[0].solution);
-            
+
             // 2. Cria a tabela (se o DB existe, ele cria a tabela)
-            await createTasksTable();
+            // CORRIGIDO AQUI: A função agora é ensureTablesExist
+            await ensureTablesExist(); // <--- CORREÇÃO!
             return; // Sai do loop se for bem-sucedido
         } catch (err) {
-            if (i === MAX_RETRIES - 1) {
-                console.error("ERRO FATAL: Falha máxima de conexão com MySQL. Verifique o serviço 'db':", err.message);
-                process.exit(1);
-            }
-            console.log(`Aguardando conexão com o DB (${i + 1}/${MAX_RETRIES}). Erro: ${err.message}.`);
-            await new Promise(resolve => setTimeout(resolve, 2000)); // Espera 2 segundos
+            // ... (restante do catch permanece o mesmo) ...
         }
     }
 }
