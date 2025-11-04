@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Projeto FullStack - Lista de Tarefas (CRUD)</title>
+    <title>Projeto FullStack - Lista de Tarefas com JWT</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -24,46 +24,205 @@
             background-color: #e6ffe6;
             color: #555;
         }
+
+        #auth-section,
+        #task-section {
+            border: 1px solid #ddd;
+            padding: 20px;
+            margin-bottom: 20px;
+            border-radius: 8px;
+        }
+
+        input[type="text"],
+        input[type="password"] {
+            padding: 10px;
+            margin-right: 10px;
+        }
     </style>
 </head>
 
 <body>
     <h1>📋 Lista de Tarefas FullStack</h1>
-    <p>O Backend (Node) e o Banco de Dados (MySQL) estão integrados!</p>
-
+    <p>O Backend (Node) agora exige **Autenticação JWT** e **Autorização** (você só vê suas tarefas).</p>
     <hr>
 
-    <h2>Adicionar Nova Tarefa</h2>
-    <form id="task-form">
-        <input type="text" id="task-title" placeholder="Descreva a nova tarefa..." required
-            style="padding: 10px; width: 300px;">
-        <button type="submit" style="padding: 10px;">Adicionar</button>
-    </form>
+    <div id="auth-section">
+        <h2>Área de Autenticação</h2>
+        <div id="auth-display">
+            <p>Faça login para continuar.</p>
+        </div>
 
-    <hr>
+        <form id="login-form">
+            <h3>Login</h3>
+            <input type="text" id="login-username" placeholder="Usuário" required>
+            <input type="password" id="login-password" placeholder="Senha" required>
+            <button type="submit">Entrar</button>
+            <button type="button" onclick="showRegister()">Não tem conta? Registre-se</button>
+        </form>
 
-    <h2>Tarefas Existentes</h2>
-    <div id="tasks-list">
-        <p>Carregando tarefas...</p>
+        <form id="register-form" style="display: none;">
+            <h3>Registro</h3>
+            <input type="text" id="register-username" placeholder="Novo Usuário" required>
+            <input type="password" id="register-password" placeholder="Nova Senha" required>
+            <button type="submit">Registrar</button>
+            <button type="button" onclick="showLogin()">Voltar ao Login</button>
+        </form>
     </div>
 
+    <div id="task-section" style="display: none;">
+        <h2>Adicionar Nova Tarefa</h2>
+        <form id="task-form">
+            <input type="text" id="task-title" placeholder="Descreva a nova tarefa..." required
+                style="padding: 10px; width: 300px;">
+            <button type="submit" style="padding: 10px;">Adicionar</button>
+        </form>
+
+        <hr>
+
+        <h2>Suas Tarefas</h2>
+        <div id="tasks-list">
+            <p>Carregando tarefas...</p>
+        </div>
+    </div>
+
+
     <script>
-        const API_BASE_URL = 'http://localhost:3000/api/tasks';
+        const API_BASE_URL = 'http://localhost:3000/api';
         const tasksList = document.getElementById('tasks-list');
         const taskForm = document.getElementById('task-form');
         const taskTitleInput = document.getElementById('task-title');
+        const authSection = document.getElementById('auth-section');
+        const taskSection = document.getElementById('task-section');
+        const authDisplay = document.getElementById('auth-display');
+        const loginForm = document.getElementById('login-form');
+        const registerForm = document.getElementById('register-form');
 
-        // --- ROTA UPDATE (TOGGLE COMPLETED) ---
+        // Variável global para armazenar o JWT
+        let currentToken = localStorage.getItem('jwtToken');
+        let currentUserId = localStorage.getItem('userId');
+        let currentUsername = localStorage.getItem('username');
+
+        // --- UTILS ---
+        function getAuthHeaders() {
+            if (!currentToken) {
+                return {};
+            }
+            // Adiciona o cabeçalho de Autorização Bearer Token
+            return {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${currentToken}`
+            };
+        }
+
+        function setAppState(token, userId, username) {
+            currentToken = token;
+            currentUserId = userId;
+            currentUsername = username;
+
+            if (token) {
+                // Armazena no localStorage (não seguro para produção, mas ok para dev)
+                localStorage.setItem('jwtToken', token);
+                localStorage.setItem('userId', userId);
+                localStorage.setItem('username', username);
+
+                authDisplay.innerHTML = `<p>Logado como: <strong>${username}</strong> (<a href="#" onclick="logout()">Sair</a>)</p>`;
+                authSection.style.display = 'block';
+                taskSection.style.display = 'block';
+                loginForm.style.display = 'none';
+                registerForm.style.display = 'none';
+                fetchAndRenderTasks(); // Tenta carregar as tarefas do usuário
+            } else {
+                localStorage.removeItem('jwtToken');
+                localStorage.removeItem('userId');
+                localStorage.removeItem('username');
+
+                authDisplay.innerHTML = `<p>Faça login para continuar.</p>`;
+                authSection.style.display = 'block';
+                taskSection.style.display = 'none'; // Esconde tarefas
+                showLogin(); // Volta para o login
+            }
+        }
+
+        function showRegister() {
+            loginForm.style.display = 'none';
+            registerForm.style.display = 'block';
+        }
+
+        function showLogin() {
+            loginForm.style.display = 'block';
+            registerForm.style.display = 'none';
+        }
+
+        function logout() {
+            setAppState(null, null, null);
+            alert('Você foi desconectado.');
+        }
+
+        // --- API HELPERS (Todas as funções agora usam getAuthHeaders) ---
+
+        // ROTA LOGIN
+        loginForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const username = document.getElementById('login-username').value;
+            const password = document.getElementById('login-password').value;
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/users/login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, password })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    alert('Login bem-sucedido!');
+                    setAppState(data.token, data.userId, username);
+                } else {
+                    alert(`Erro de Login: ${data.error ? data.error.message : 'Credenciais inválidas.'}`);
+                }
+            } catch (error) {
+                console.error("Erro de rede/login:", error);
+                alert('Erro de rede ao tentar logar.');
+            }
+        });
+
+        // ROTA REGISTRO
+        registerForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const username = document.getElementById('register-username').value;
+            const password = document.getElementById('register-password').value;
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/users/register`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, password })
+                });
+
+                const data = await response.json();
+
+                if (response.status === 201) {
+                    alert('Registro bem-sucedido! Você está logado automaticamente.');
+                    setAppState(data.token, data.userId, username);
+                } else {
+                    alert(`Erro de Registro: ${data.error ? data.error.message : 'Falha ao registrar.'}`);
+                }
+            } catch (error) {
+                console.error("Erro de rede/registro:", error);
+                alert('Erro de rede ao tentar registrar.');
+            }
+        });
+
+        // ROTA UPDATE (TOGGLE COMPLETED)
         async function toggleComplete(id, currentTitle, currentStatus) {
             const newStatus = !currentStatus;
 
             try {
-                const response = await fetch(`${API_BASE_URL}/${id}`, {
+                const response = await fetch(`${API_BASE_URL}/tasks/${id}`, {
                     method: 'PUT',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    // Envia o title também (embora o Model já corrija, é mais seguro)
+                    // Usa o token!
+                    headers: getAuthHeaders(),
                     body: JSON.stringify({
                         title: currentTitle,
                         completed: newStatus
@@ -72,10 +231,11 @@
 
                 if (response.ok) {
                     fetchAndRenderTasks();
-                } else if (response.status === 400) {
-                    alert('Erro de validação (400) ao alternar status.');
+                } else if (response.status === 401 || response.status === 403) {
+                    alert('Sessão expirada ou não autorizada. Faça login novamente.');
+                    logout();
                 } else if (response.status === 404) {
-                    alert('Erro: Tarefa não encontrada.');
+                    alert('Erro: Tarefa não encontrada ou acesso não autorizado (404).');
                 } else {
                     alert('Falha ao atualizar status.');
                 }
@@ -85,32 +245,32 @@
             }
         }
 
-        // --- NOVA: ROTA UPDATE (EDITAR TÍTULO) ---
+        // ROTA UPDATE (EDITAR TÍTULO)
         async function saveEdit(id, inputElement) {
             const newTitle = inputElement.value.trim();
 
-            // 1. Validação básica de front-end
             if (newTitle.length < 3) {
                 alert('O título deve ter pelo menos 3 caracteres.');
                 return;
             }
 
             try {
-                const response = await fetch(`${API_BASE_URL}/${id}`, {
+                const response = await fetch(`${API_BASE_URL}/tasks/${id}`, {
                     method: 'PUT',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    // Envia APENAS o título (completed será nulo, mas o Model não se importa)
+                    // Usa o token!
+                    headers: getAuthHeaders(),
                     body: JSON.stringify({ title: newTitle })
                 });
 
                 if (response.ok) {
-                    fetchAndRenderTasks(); // Recarrega a lista
+                    fetchAndRenderTasks();
+                } else if (response.status === 401 || response.status === 403) {
+                    alert('Sessão expirada ou não autorizada. Faça login novamente.');
+                    logout();
                 } else if (response.status === 400) {
-                    alert('Erro de validação (400) ao salvar título. Verifique o tamanho do texto.');
+                    alert('Erro de validação (400) ao salvar título.');
                 } else if (response.status === 404) {
-                    alert('Erro: Tarefa não encontrada.');
+                    alert('Erro: Tarefa não encontrada ou acesso não autorizado (404).');
                 } else {
                     alert('Falha ao salvar edição.');
                 }
@@ -120,55 +280,26 @@
             }
         }
 
-        // --- NOVA: Ativa o modo de edição (Substitui o texto por um input) ---
-        function handleEdit(id, currentTitle, taskDiv) {
-            // A tag pai que continha o título e o onclick de toggle
-            const titleContainer = taskDiv.querySelector('.task-title-display');
-            const actionButtons = taskDiv.querySelector('.task-action-buttons');
-
-            // Remove o onclick de toggle
-            titleContainer.removeAttribute('onclick');
-            titleContainer.style.cursor = 'default';
-
-            // Substitui o conteúdo pelo formulário de edição
-            titleContainer.innerHTML = `
-        <input 
-            type="text" 
-            id="edit-input-${id}" 
-            value="${currentTitle.trim()}" 
-            style="padding: 5px; width: 80%;"
-            onkeypress="if(event.key === 'Enter') { saveEdit(${id}, this); return false; }"
-        >
-    `;
-
-            // Atualiza os botões de ação para Salvar/Cancelar
-            actionButtons.innerHTML = `
-        <button 
-            onclick="saveEdit(${id}, document.getElementById('edit-input-${id}'))" 
-            style="padding: 5px 10px; background-color: green; color: white; border: none; cursor: pointer; margin-right: 5px;">
-            Salvar
-        </button>
-        <button onclick="fetchAndRenderTasks()" style="padding: 5px 10px; cursor: pointer;">
-            Cancelar
-        </button>
-    `;
-        }
-
-        // --- ROTA DELETE (DELETE) ---
+        // ROTA DELETE (DELETE)
         async function deleteTask(id) {
             if (!confirm(`Tem certeza que deseja excluir a tarefa ID ${id}?`)) {
                 return;
             }
 
             try {
-                const response = await fetch(`${API_BASE_URL}/${id}`, {
-                    method: 'DELETE'
+                const response = await fetch(`${API_BASE_URL}/tasks/${id}`, {
+                    method: 'DELETE',
+                    // Usa o token!
+                    headers: getAuthHeaders()
                 });
 
                 if (response.status === 204) {
                     fetchAndRenderTasks();
+                } else if (response.status === 401 || response.status === 403) {
+                    alert('Sessão expirada ou não autorizada. Faça login novamente.');
+                    logout();
                 } else if (response.status === 404) {
-                    alert('Erro: Tarefa não encontrada.');
+                    alert('Erro: Tarefa não encontrada ou acesso não autorizado (404).');
                 } else {
                     alert('Falha ao excluir tarefa.');
                 }
@@ -178,11 +309,26 @@
             }
         }
 
-        // --- ROTA READ (GET) ---
+        // ROTA READ (GET)
         async function fetchAndRenderTasks() {
             tasksList.innerHTML = '<p>Carregando tarefas...</p>';
+            if (!currentToken) {
+                tasksList.innerHTML = '<p>Faça login para ver suas tarefas.</p>';
+                return;
+            }
+
             try {
-                const response = await fetch(API_BASE_URL);
+                const response = await fetch(`${API_BASE_URL}/tasks`, {
+                    // Usa o token!
+                    headers: getAuthHeaders()
+                });
+
+                if (response.status === 401 || response.status === 403) {
+                    tasksList.innerHTML = '<p style="color: red;">Sessão expirada ou não autorizada. Faça login novamente.</p>';
+                    logout();
+                    return;
+                }
+
                 if (!response.ok) throw new Error('Falha ao buscar dados da API.');
 
                 const tasks = await response.json();
@@ -197,52 +343,51 @@
                     const taskDiv = document.createElement('div');
                     taskDiv.className = `task-item ${task.completed ? 'completed' : ''}`;
 
-                    // Tratamento para garantir que o título não quebre o HTML (escapa aspas)
                     const taskTitleSafe = task.title.trim().replace(/'/g, "\\'").replace(/"/g, '\\"');
 
+                    // O restante do render fica igual
                     taskDiv.innerHTML = `
-                <div style="display: flex; justify-content: space-between; align-items: center;">
-                    <span 
-                        class="task-title-display"
-                        onclick="toggleComplete(${task.id}, '${taskTitleSafe}', ${task.completed})" 
-                        style="cursor: pointer; flex-grow: 1;">
-                        <strong>${task.title}</strong> 
-                    </span>
-                    
-                    <div class="task-action-buttons">
-                        <button 
-                            onclick="handleEdit(${task.id}, '${taskTitleSafe}', this.closest('.task-item'))" 
-                            style="color: white; background-color: blue; border: none; padding: 5px 10px; cursor: pointer; margin-right: 5px;">
-                            Editar
-                        </button>
-                        <button onclick="deleteTask(${task.id})" style="color: white; background-color: red; border: none; padding: 5px 10px; cursor: pointer;">
-                            Excluir
-                        </button>
-                    </div>
-                </div>
-                <small>ID: ${task.id} - Criada em: ${new Date(task.created_at).toLocaleDateString()}</small>
-            `;
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <span 
+                                class="task-title-display"
+                                onclick="toggleComplete(${task.id}, '${taskTitleSafe}', ${task.completed})" 
+                                style="cursor: pointer; flex-grow: 1;">
+                                <strong>${task.title}</strong> 
+                            </span>
+                            
+                            <div class="task-action-buttons">
+                                <button 
+                                    onclick="handleEdit(${task.id}, '${taskTitleSafe}', this.closest('.task-item'))" 
+                                    style="color: white; background-color: blue; border: none; padding: 5px 10px; cursor: pointer; margin-right: 5px;">
+                                    Editar
+                                </button>
+                                <button onclick="deleteTask(${task.id})" style="color: white; background-color: red; border: none; padding: 5px 10px; cursor: pointer;">
+                                    Excluir
+                                </button>
+                            </div>
+                        </div>
+                        <small>ID: ${task.id} - Criada em: ${new Date(task.created_at).toLocaleDateString()}</small>
+                    `;
                     tasksList.appendChild(taskDiv);
                 });
 
             } catch (error) {
                 console.error("Erro ao carregar tarefas:", error);
-                tasksList.innerHTML = `<p style="color: red;">Erro ao conectar à API: ${error.message}. Verifique se o Backend está ativo na porta 3000.</p>`;
+                tasksList.innerHTML = `<p style="color: red;">Erro ao conectar à API: ${error.message}.</p>`;
             }
         }
 
-        // --- ROTA CREATE (POST) ---
+        // ROTA CREATE (POST)
         taskForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             const title = taskTitleInput.value.trim();
             if (!title) return;
 
             try {
-                const response = await fetch(API_BASE_URL, {
+                const response = await fetch(`${API_BASE_URL}/tasks`, {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
+                    // Usa o token!
+                    headers: getAuthHeaders(),
                     body: JSON.stringify({ title })
                 });
 
@@ -251,7 +396,10 @@
                     fetchAndRenderTasks();
                 } else if (response.status === 400) {
                     const errorBody = await response.json();
-                    alert(`Erro: ${errorBody.message}`);
+                    alert(`Erro de validação: ${errorBody.message}`);
+                } else if (response.status === 401 || response.status === 403) {
+                    alert('Sessão expirada ou não autorizada. Faça login novamente.');
+                    logout();
                 } else {
                     alert('Falha ao criar tarefa.');
                 }
@@ -261,8 +409,46 @@
             }
         });
 
-        // Inicia o carregamento das tarefas
-        fetchAndRenderTasks();
+        // Mantém a função de edição do título como estava
+        function handleEdit(id, currentTitle, taskDiv) {
+            // ... (implementação de handleEdit aqui - sem mudanças na lógica interna) ...
+            const titleContainer = taskDiv.querySelector('.task-title-display');
+            const actionButtons = taskDiv.querySelector('.task-action-buttons');
+
+            titleContainer.removeAttribute('onclick');
+            titleContainer.style.cursor = 'default';
+
+            titleContainer.innerHTML = `
+                <input 
+                    type="text" 
+                    id="edit-input-${id}" 
+                    value="${currentTitle.trim()}" 
+                    style="padding: 5px; width: 80%;"
+                    onkeypress="if(event.key === 'Enter') { saveEdit(${id}, this); return false; }"
+                >
+            `;
+
+            actionButtons.innerHTML = `
+                <button 
+                    onclick="saveEdit(${id}, document.getElementById('edit-input-${id}'))" 
+                    style="padding: 5px 10px; background-color: green; color: white; border: none; cursor: pointer; margin-right: 5px;">
+                    Salvar
+                </button>
+                <button onclick="fetchAndRenderTasks()" style="padding: 5px 10px; cursor: pointer;">
+                    Cancelar
+                </button>
+            `;
+        }
+
+        // Inicia o estado da aplicação
+        document.addEventListener('DOMContentLoaded', () => {
+            if (currentToken) {
+                setAppState(currentToken, currentUserId, currentUsername);
+            } else {
+                showLogin();
+                taskSection.style.display = 'none';
+            }
+        });
     </script>
 
 </body>

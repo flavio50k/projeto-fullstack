@@ -1,56 +1,90 @@
-// Importa o pool de conexões criado e exportado pelo database.js
+// TaskModel.js (Atualizado para incluir user_id)
+
 const pool = require('../config/database');
 
-// 1. Função para buscar todas as tarefas (MODIFICADA: WHERE user_id)
-const getAll = async (user_id) => {
-    // Busca apenas as tarefas que pertencem ao user_id
-    const [tasks] = await pool.execute('SELECT * FROM tasks WHERE user_id = ?', [user_id]);
+// Função de utilidade para formatar a data
+const formatarData = (date) => {
+    return date.toISOString().replace('T', ' ').substring(0, 19);
+};
+
+// --- READ (Busca todas as tarefas de um usuário específico) ---
+const getAll = async (userId) => {
+    // Adiciona o filtro WHERE user_id = ?
+    const [tasks] = await pool.execute(
+        'SELECT * FROM tasks WHERE user_id = ?', 
+        [userId]
+    );
     return tasks;
 };
 
-// 2. Função para criar uma nova tarefa (MODIFICADA: RECEBE user_id)
-const createTask = async (task, user_id) => {
-    const { title } = task;
-    // Insere o user_id junto com o título
+// --- CREATE (Cria uma nova tarefa associada ao usuário) ---
+const createTask = async (title, userId) => {
+    const dateUTC = new Date(Date.now());
+    
+    // Adiciona o user_id na query INSERT
     const [result] = await pool.execute(
-        'INSERT INTO tasks (title, user_id) VALUES (?, ?)', 
-        [title, user_id]
+        'INSERT INTO tasks (title, completed, created_at, user_id) VALUES (?, ?, ?, ?)', 
+        [title, 0, formatarData(dateUTC), userId]
     );
+
+    // Retorna a tarefa criada (útil para o frontend)
+    return { 
+        id: result.insertId, 
+        title, 
+        completed: 0, 
+        created_at: dateUTC,
+        user_id: userId
+    };
+};
+
+// --- DELETE (Deleta a tarefa, verificando o ID da tarefa E o ID do usuário) ---
+const deleteTask = async (taskId, userId) => {
+    // Deleta a tarefa SE E SOMENTE SE o ID da tarefa E o ID do usuário coincidirem
+    const [result] = await pool.execute(
+        'DELETE FROM tasks WHERE id = ? AND user_id = ?', 
+        [taskId, userId]
+    );
+    // Retorna o número de linhas afetadas (0 se não encontrou, 1 se deletou)
+    return result.affectedRows;
+};
+
+// --- UPDATE (Atualiza uma tarefa, verificando o ID da tarefa E o ID do usuário) ---
+const updateTask = async (taskId, title, completed, userId) => {
+    // 1. Constrói a query e os valores dinamicamente
+    let queryParts = [];
+    let values = [];
+
+    // Inclui o 'title' apenas se for fornecido (não for nulo/undefined)
+    if (title !== undefined && title !== null) {
+        queryParts.push('title = ?');
+        values.push(title);
+    }
+    
+    // Inclui o 'completed' apenas se for fornecido
+    if (completed !== undefined && completed !== null) {
+        queryParts.push('completed = ?');
+        // O valor booleano é mapeado para 1 ou 0 no MySQL
+        values.push(completed ? 1 : 0);
+    }
+
+    if (queryParts.length === 0) {
+        // Nada para atualizar
+        return { affectedRows: 0 }; 
+    }
+
+    // 2. Constrói a query final
+    const updateQuery = `UPDATE tasks SET ${queryParts.join(', ')} WHERE id = ? AND user_id = ?`;
+    
+    // 3. Adiciona os IDs no final dos valores
+    values.push(taskId, userId);
+
+    // 4. Executa
+    const [result] = await pool.execute(updateQuery, values);
+    
+    // Retorna o número de linhas afetadas (0 se não encontrou ou 1 se atualizou)
     return result;
 };
 
-// 3. Função para deletar uma tarefa (MODIFICADA: WHERE id AND user_id)
-const deleteTask = async (id, user_id) => {
-    // Só deleta se o ID da tarefa corresponder ao ID do usuário autenticado
-    const [result] = await pool.execute('DELETE FROM tasks WHERE id = ? AND user_id = ?', [id, user_id]);
-    return result; 
-};
-
-// 4. Função para atualizar uma tarefa (MODIFICADA: WHERE id AND user_id)
-const updateTask = async (id, task, user_id) => {
-    let { title, completed } = task; 
-
-    // 1. Busca a tarefa existente no DB (AGORA FILTRA POR user_id)
-    const [existingTaskRows] = await pool.execute('SELECT title, completed FROM tasks WHERE id = ? AND user_id = ?', [id, user_id]);
-    
-    // Se a tarefa não existir ou não pertencer a este usuário
-    if (existingTaskRows.length === 0) {
-        return { affectedRows: 0 }; 
-    }
-    
-    // ... (lógica de finalTitle e finalCompleted permanece a mesma) ...
-    const existingTask = existingTaskRows[0];
-    const finalTitle = title !== undefined ? title : existingTask.title;
-    const finalCompleted = completed !== undefined ? completed : existingTask.completed;
-
-    // 3. Executa o UPDATE com os valores finais
-    // A query de update não precisa do user_id, pois já filtramos na busca anterior, 
-    // mas o WHERE garante a segurança final
-    const query = 'UPDATE tasks SET title = ?, completed = ? WHERE id = ? AND user_id = ?';
-    const [result] = await pool.execute(query, [finalTitle, finalCompleted, id, user_id]);
-    
-    return result; 
-};
 
 module.exports = {
     getAll,
