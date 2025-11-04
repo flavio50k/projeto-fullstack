@@ -23,6 +23,6 @@ Crie um arquivo chamado **`.env`** na raiz do projeto e defina as variáveis de 
 # .env
 
 # Senha Root do MySQL (Usada pelo DB e pelo phpMyAdmin)
-MYSQL_ROOT_PASSWORD=K@va2003
+MYSQL_ROOT_PASSWORD=sua_senha_root_aqui
 # Nome do Banco de Dados a ser criado
 MYSQL_DATABASE=projeto_db
