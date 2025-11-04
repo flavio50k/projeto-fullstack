@@ -1,93 +1,81 @@
-// taskController.js (Atualizado para incluir Autorização)
-
+// ./backend/src/controllers/taskController.js
 const taskModel = require('../models/TaskModel');
 
-// 1. Controller para listar todas as tarefas de um usuário
+// --- GET ALL TASKS ---
 const getAll = async (req, res) => {
-    // Pega o ID do usuário injetado pelo authMiddleware
+    // O ID do usuário logado é extraído do token pelo authMiddleware
     const userId = req.user.id; 
     
-    try {
-        // Passa o userId para o Model
-        const tasks = await taskModel.getAll(userId);
-        return res.status(200).json(tasks);
-    } catch (error) {
-        console.error("Erro ao buscar tarefas:", error);
-        return res.status(500).json({ message: 'Erro interno do servidor ao buscar tarefas.' });
-    }
+    const tasks = await taskModel.getAll(userId);
+    return res.status(200).json(tasks);
 };
 
-// 2. Controller para criar uma nova tarefa (associada ao usuário)
-const createTask = async (req, res) => {
+// --- CREATE TASK ---
+const create = async (req, res) => {
+    const userId = req.user.id;
     const { title } = req.body;
-    // Pega o ID do usuário injetado pelo authMiddleware
-    const userId = req.user.id; 
-    
-    try {
-        // Passa o title e o userId para o Model
-        const createdTask = await taskModel.createTask(title, userId);
-        
-        // Retorna a tarefa criada, incluindo o ID e o user_id
-        return res.status(201).json(createdTask);
-    } catch (error) {
-        console.error("Erro ao criar tarefa:", error);
-        // O erro de validação (400) já é capturado pelo middleware validateBody (se houver)
-        return res.status(500).json({ message: 'Erro interno do servidor ao criar tarefa.' });
+
+    if (!title) {
+        return res.status(400).json({ error: { message: 'O título da tarefa é obrigatório.' } });
     }
+
+    const taskId = await taskModel.create(userId, title);
+    return res.status(201).json({ message: 'Tarefa criada com sucesso!', id: taskId, title: title, completed: 0 });
 };
 
-// 3. Controller para deletar uma tarefa (se pertencer ao usuário)
-const deleteTask = async (req, res) => {
+// --- UPDATE TASK ---
+const update = async (req, res) => {
     const { id } = req.params;
-    // Pega o ID do usuário injetado pelo authMiddleware
-    const userId = req.user.id; 
-
-    try {
-        // O Model agora retorna o número de linhas afetadas
-        const affectedRows = await taskModel.deleteTask(id, userId);
-        
-        // Se 0 linhas afetadas, significa que a tarefa não existe OU não pertence ao usuário
-        if (affectedRows === 0) {
-             // Retorna 404 para não indicar se a tarefa existe, mas não pertence ao usuário
-            return res.status(404).json({ message: 'Tarefa não encontrada ou acesso não autorizado.' });
-        }
-
-        // Resposta 204 (No Content)
-        return res.status(204).end();
-    } catch (error) {
-        console.error(`Erro ao deletar tarefa ID ${id}:`, error);
-        return res.status(500).json({ message: 'Erro interno do servidor ao deletar tarefa.' });
-    }
-};
-
-// 4. Controller para atualizar uma tarefa (se pertencer ao usuário)
-const updateTask = async (req, res) => {
-    const { id } = req.params;
+    const userId = req.user.id;
     const { title, completed } = req.body;
-    // Pega o ID do usuário injetado pelo authMiddleware
-    const userId = req.user.id; 
 
-    try {
-        // Passa o id, title, completed e userId para o Model
-        const result = await taskModel.updateTask(id, title, completed, userId);
-        
-        // Verifica se a atualização afetou alguma linha (se afetou 0, o ID não existia ou não pertencia ao usuário)
-        if (result.affectedRows === 0) {
-            // Retorna 404 para não dar dicas sobre a existência vs. permissão
-            return res.status(404).json({ message: 'Tarefa não encontrada ou acesso não autorizado.' });
-        }
-        
-        // Se afetou 1 linha (sucesso), retorna 204
-        return res.status(204).end();
-    } catch (error) {
-        console.error(`Erro ao atualizar tarefa ID ${id}:`, error);
-        return res.status(500).json({ message: 'Erro interno do servidor ao atualizar tarefa.' });
+    // Validação
+    if (!title && completed === undefined) {
+        return res.status(400).json({ error: { message: 'Pelo menos o título ou o status "completed" deve ser fornecido.' } });
     }
+
+    const updated = await taskModel.update(id, userId, title, completed);
+
+    if (updated) {
+        return res.status(200).json({ message: 'Tarefa atualizada com sucesso.' });
+    } else {
+        // Task não encontrada ou usuário não tem permissão para a task (404 é uma boa prática aqui)
+        return res.status(404).json({ error: { message: 'Tarefa não encontrada ou não pertence ao usuário.' } });
+    }
+};
+
+// --- DELETE TASK (Lógica de Permissão Administrador/Usuário Comum) ---
+const exclude = async (req, res) => {
+    const { id } = req.params;
+    const { role, id: userId } = req.user; // Obtém a role e o id do usuário do token
+
+    let deleted = false;
+
+    if (role === 'admin') {
+        // Se for ADMIN, exclui a tarefa, independentemente de quem a criou
+        deleted = await taskModel.excludeAny(id);
+        console.log(`ADMIN (${userId}) excluiu tarefa ID: ${id}`);
+    } else {
+        // Se for USUÁRIO COMUM, exclui SOMENTE se for sua própria tarefa
+        deleted = await taskModel.exclude(id, userId);
+        console.log(`USER (${userId}) tentou excluir tarefa ID: ${id} (sucesso: ${deleted})`);
+    }
+
+    if (deleted) {
+        return res.status(204).send(); // 204 No Content para exclusão bem-sucedida
+    } else if (role !== 'admin') {
+        // Se não foi excluído E NÃO é admin, significa que ele tentou excluir a tarefa de outro usuário.
+        // Retornamos 403 (Proibido) se a exclusão falhou por falta de permissão na tarefa.
+        return res.status(403).json({ error: { message: 'Você não tem permissão para excluir esta tarefa.' } });
+    }
+    
+    // Se o Admin não conseguiu excluir, é porque a task não existia.
+    return res.status(404).json({ error: { message: 'Tarefa não encontrada.' } });
 };
 
 module.exports = {
     getAll,
-    createTask,
-    deleteTask,
-    updateTask,
+    create,
+    update,
+    exclude,
 };
