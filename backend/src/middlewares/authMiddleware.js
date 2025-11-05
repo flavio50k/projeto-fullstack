@@ -1,10 +1,7 @@
-// authMiddleware.js
+// backend/src/middlewares/authMiddleware.js
 
 const jwt = require('jsonwebtoken');
-
-// A chave secreta (deve ser a mesma usada no userController)
-// IDEALMENTE: Deve ser carregada de process.env!
-const JWT_SECRET = 'seu_super_secreto_aqui_e_muito_mais_longo'; 
+const env = require('../config/env'); // IMPORTAÇÃO
 
 // Middleware para verificar se o JWT é válido e injetar o user_id na requisição
 const authMiddleware = (req, res, next) => {
@@ -22,7 +19,7 @@ const authMiddleware = (req, res, next) => {
 
     try {
         // 2. Verifica e decodifica o token
-        const decoded = jwt.verify(token, JWT_SECRET);
+        const decoded = jwt.verify(token, env.JWT_SECRET); // AGORA USA env
         
         // 3. Injeta as informações do usuário (ID e username) na requisição (req.user)
         // O userController armazena { id: userId, username: username }

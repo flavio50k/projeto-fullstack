@@ -1,11 +1,11 @@
-// ./backend/src/controllers/userController.js (Revisado para garantir a lógica de registro)
+// backend/src/controllers/userController.js
 
 const userModel = require('../models/UserModel');
 const bcrypt = require('bcryptjs'); 
 const jwt = require('jsonwebtoken'); 
+const env = require('../config/env'); // IMPORTAÇÃO
 
-const JWT_SECRET = 'seu_super_secreto_aqui_e_muito_mais_longo'; 
-const saltRounds = 10; 
+const saltRounds = 10;
 
 // --- REGISTRO --- 
 const register = async (req, res) => {
@@ -28,8 +28,8 @@ const register = async (req, res) => {
         const userId = await userModel.createUser(username, hashedPassword); 
         
         // 3. Gera o Token JWT com a role
-        const token = jwt.sign({ id: userId, username: username, role: 'user' }, JWT_SECRET, { 
-            expiresIn: '1h' 
+        const token = jwt.sign({ id: userId, username: username, role: 'user' }, env.JWT_SECRET, { 
+            expiresIn: env.JWT_EXPIRES_IN // AGORA USA env
         });
 
         // 4. Responde com a role 'user'
@@ -65,10 +65,10 @@ const login = async (req, res) => {
         return res.status(401).json({ error: { message: 'Credenciais inválidas.' } });
     }
 
-    const token = jwt.sign({ id: user.id, username: user.username, role: user.role }, JWT_SECRET, { 
-        expiresIn: '1h' 
+    const token = jwt.sign({ id: user.id, username: user.username, role: user.role }, env.JWT_SECRET, { 
+        expiresIn: env.JWT_EXPIRES_IN // AGORA USA env
     });
-
+    
     return res.status(200).json({ message: 'Login bem-sucedido!', token: token, userId: user.id, role: user.role });
 };
 

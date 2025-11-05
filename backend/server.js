@@ -1,21 +1,24 @@
+// backend/server.js
+
 const express = require('express');
 const cors = require('cors');
 require('express-async-errors');
 const taskRoutes = require('./src/routes/taskRoutes'); 
 const userRoutes = require('./src/routes/userRoutes');
 const errorMiddleware = require('./src/middlewares/errorMiddleware');
+const env = require('./src/config/env'); // IMPORTAÇÃO
 
 // Garante que a conexão com o DB seja estabelecida antes de começar a ouvir
 require('./src/config/database'); 
 
 const app = express();
-const port = 3000;
+const port = env.PORT; // USANDO VARIÁVEL DE AMBIENTE
 
 // Middleware global
 app.use(cors()); 
 app.use(express.json()); 
 
-// =========================================================
+// =========================================================o
 // ROTEAMENTO
 // =========================================================
 
