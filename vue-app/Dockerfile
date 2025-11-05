@@ -1,5 +1,5 @@
 # --- STAGE 1: BUILD (Compila o código Vue) ---
-FROM node:lts-alpine as build-stage
+FROM node:lts-alpine AS build-stage
 WORKDIR /app
 
 # Copia e instala dependências
@@ -12,7 +12,7 @@ RUN npm run build
 
 # --- STAGE 2: SERVE (Nginx) ---
 # Usa a imagem Nginx super-leve para servir os arquivos estáticos
-FROM nginx:stable-alpine as production-stage
+FROM nginx:stable-alpine AS production-stage
 # Copia os arquivos gerados (do Stage 1) para o diretório de serviço do Nginx
 COPY --from=build-stage /app/dist /usr/share/nginx/html
 
