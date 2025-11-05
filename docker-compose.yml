@@ -12,7 +12,7 @@ services:
     volumes:
       - mysql_data:/var/lib/mysql # Persistência dos dados
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      test: [ "CMD", "mysqladmin", "ping", "-h", "localhost" ]
       timeout: 20s
       retries: 10
       start_period: 10s
@@ -20,38 +20,41 @@ services:
   # 2. Container do Backend (Node.js com Hot-Reload)
   backend:
     build:
-      context: ./backend 
+      context: ./backend
     container_name: backend_app
     ports:
-      - "3000:3000" 
+      - "3000:3000"
     volumes:
-      - ./backend:/usr/src/app 
+      - ./backend:/usr/src/app
       - backend_node_modules:/usr/src/app/node_modules
     depends_on:
       db:
         condition: service_healthy # Espera o MySQL estar pronto
     environment:
       # Variáveis de Conexão (DB_HOST é o nome do serviço 'db')
-      DB_HOST: db 
+      DB_HOST: db
       DB_USER: root
       DB_PASSWORD: ${MYSQL_ROOT_PASSWORD}
       DB_NAME: ${MYSQL_DATABASE}
     # Comando final para instalar dependências e rodar com Nodemon
     command: sh -c "npm install && npm run dev"
 
-  # 3. Container do Frontend (Nginx para servir estático)
+  # 3. Container do Frontend (AGORA VUE/Nginx)
   frontend:
-    image: nginx:alpine # Imagem Nginx estável e leve
-    container_name: frontend_web
+    # SUBSTITUI a linha 'image: nginx:alpine' por 'build'
+    build:
+      context: . # O contexto do build é a raiz do projeto
+      dockerfile: vue-app/Dockerfile # Aponta para o novo Dockerfile
+    container_name: frontend_vue
     ports:
-      - "8080:80" # Mapeia a porta 80 do container para 8080 do host
-    volumes:
-      # Monta a pasta local do frontend no local onde o Nginx serve arquivos.
-      # Usamos a porta 80 do container.
-      - ./frontend:/usr/share/nginx/html:ro 
+      - "8080:80" # Mapeia a porta 80 do Nginx para 8080 do host
+    # Volumes não são usados para este modo de build final
     restart: always
-    
-# 4. Container de Gerenciamento do Banco de Dados (phpMyAdmin)
+    # Depende do backend para que o Vue possa se comunicar com a API
+    depends_on:
+      - backend
+
+  # 4. Container de Gerenciamento do Banco de Dados (phpMyAdmin)
   phpmyadmin:
     image: phpmyadmin/phpmyadmin
     container_name: phpmyadmin_tool
@@ -59,12 +62,12 @@ services:
     environment:
       # phpMyAdmin precisa saber para qual servidor MySQL conectar.
       # Usamos o nome do serviço: 'db'
-      PMA_HOST: db 
+      PMA_HOST: db
       # phpMyAdmin acessa o DB com as credenciais do root que definimos no .env
-      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD} 
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
     ports:
       # Mapeia a porta 8081 do seu host para a porta 80 do container
-      - "8081:80" 
+      - "8081:80"
     depends_on:
       db:
         condition: service_healthy
