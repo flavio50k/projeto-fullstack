@@ -1,49 +1,178 @@
-# Projeto Fullstack - Lista de Tarefas (To-Do List)
+# 🚀 Projeto Fullstack com Docker Compose — Node.js + Vue.js + MySQL + phpMyAdmin
 
-Este projeto implementa uma aplicação **Fullstack de Lista de Tarefas** completa, demonstrando uma **arquitetura moderna, escalável e 100% containerizada** utilizando Docker Compose.
-
-O foco principal do projeto está na **segurança**, na **performance** e na segregação clara de responsabilidades entre os serviços.
-
----
-
-## Stack Tecnológica
-
-| Componente | Tecnologia | Função | Container | Porta Padrão |
-| :--- | :--- | :--- | :--- | :--- |
-| **Backend (API)** | Node.js (Express) | API RESTful com rotas protegidas por JWT. | `app_backend` | 3000 |
-| **Frontend (SPA)** | Vue.js 3 + Nginx | Single Page Application (SPA) para a interface do usuário. | `app_frontend` | 8080 (Acesso) |
-| **Banco de Dados** | MySQL 8.0 | Armazenamento persistente das tarefas e usuários. | `db_mysql` | 3306 |
-| **Gerenciamento DB** | phpMyAdmin | Interface web para administração e monitoramento do MySQL. | `db_admin` | 8081 |
-| **Orquestração** | Docker Compose | Gerencia a construção, configuração e interconexão de todos os 4 serviços. | N/A | N/A |
+Um **projeto Fullstack completo e orquestrado com Docker Compose**, unindo **Node.js (Express)** no backend, **Vue.js 3 (com Nginx)** no frontend e **MySQL 8.0** como banco de dados, acompanhado do **phpMyAdmin** para administração.  
+Totalmente containerizado, modular e pronto para desenvolvimento ou implantação em produção.  
 
 ---
 
-## Segurança e Regras de Negócio (RBAC)
+## 🧱 Arquitetura de Contêineres
 
-O Backend implementa um sistema robusto de **Autenticação (JWT)** e **Autorização (Role-Based Access Control - RBAC)**, com os seguintes perfis:
+| Serviço | Tecnologia | Descrição |
+|----------|-------------|------------|
+| **backend** | Node.js + Express | API REST responsável pela autenticação, regras de negócio e persistência de dados. |
+| **vue-app** | Vue.js 3 + Nginx | Interface do usuário moderna e responsiva. |
+| **db** | MySQL 8.0 | Banco de dados relacional. |
+| **phpmyadmin** | phpMyAdmin | Ferramenta web para gerenciamento e consultas SQL. |
 
-* **Usuário Comum (`user`):** Pode visualizar, criar e editar/concluir apenas suas **próprias** tarefas.
-* **Administrador (`admin`):** Possui permissão para visualizar **todas** as tarefas do sistema e excluir tarefas de **qualquer** usuário.
-
----
-
-## Pré-requisitos
-
-Para executar o projeto, você precisa ter instalado na sua máquina:
-
-* **Docker:** (Inclui o Docker Engine e o Docker CLI)
-* **Docker Compose:** (Geralmente incluído na instalação do Docker Desktop)
+Todos os serviços são orquestrados pelo **Docker Compose**, garantindo isolamento, escalabilidade e portabilidade entre ambientes.
 
 ---
 
-## Como Executar o Projeto
+## ⚙️ Tecnologias Utilizadas
 
-Siga os passos abaixo para colocar a aplicação no ar em minutos.
+### 🖥️ Backend
+- **Node.js + Express**
+- **JWT (JSON Web Token)** para autenticação segura
+- **RBAC (Role-Based Access Control)** para controle de permissões
+- **Joi** para validação de dados
+- **MySQL 8.0** com integração via ORM
+- **Nodemon** para desenvolvimento com recarga automática
 
-### 1. Configurar Variáveis de Ambiente
+### 🌐 Frontend
+- **Vue.js 3** com composição moderna e componentes reutilizáveis
+- **Nginx** como servidor estático e proxy reverso
+- Integração total com a API REST do backend
 
-Crie um arquivo chamado `.env` na raiz do projeto e defina as variáveis de ambiente necessárias para o MySQL:
+### 🗄️ Banco de Dados
+- **MySQL 8.0** — persistência de dados confiável
+- **phpMyAdmin** — interface de administração SQL
+
+---
+
+## 🔒 Segurança e Regras de Negócio
+
+O backend implementa um **sistema robusto de autenticação e autorização**, baseado em **JWT** e **RBAC**, garantindo acesso seguro e segmentado às funcionalidades da aplicação.
+
+### Perfis de Usuário
+
+| Perfil | Permissões |
+|---------|-------------|
+| 🧍 **Usuário Comum (`user`)** | Pode **visualizar, criar e editar/concluir** apenas **suas próprias tarefas**. |
+| 👑 **Administrador (`admin`)** | Pode **visualizar todas as tarefas** e **excluir tarefas de qualquer usuário**. |
+
+- Tokens JWT com expiração configurável  
+- Middleware de autenticação e autorização em todas as rotas protegidas  
+- Hash seguro de senhas (bcrypt)  
+- Boas práticas de CORS, tratamento de erros e variáveis de ambiente  
+
+---
+
+## 🧩 Estrutura de Pastas
 
 ```bash
-MYSQL_ROOT_PASSWORD=minha_senha_segura
-MYSQL_DATABASE=todo_list_db
+PROJETO_FULLSTACK (WSL)
+├── .vscode/
+├── backend/
+│   ├── src/
+│   │   ├── config/
+│   │   │   └── database.js
+│   │   ├── controllers/
+│   │   │   ├── taskController.js
+│   │   │   └── userController.js
+│   │   ├── middlewares/
+│   │   │   ├── adminMiddleware.js
+│   │   │   ├── authMiddleware.js
+│   │   │   ├── errorMiddleware.js
+│   │   │   └── taskValidation.js
+│   │   ├── models/
+│   │   │   ├── TaskModel.js
+│   │   │   └── UserModel.js
+│   │   └── routes/
+│   │       ├── taskRoutes.js
+│   │       └── userRoutes.js
+│   ├── Dockerfile
+│   ├── nodemon.json
+│   ├── package-lock.json
+│   ├── package.json
+│   └── servers.js
+├── vue-app/
+│   ├── public/
+│   │   └── index.html
+│   ├── src/
+│   │   ├── components/
+│   │   │   └── TaskItem.vue
+│   │   ├── App.vue
+│   │   └── main.js
+│   ├── Dockerfile
+│   ├── package.json
+├── .env
+├── .env.example
+├── .gitattributes
+├── .gitignore
+├── docker-compose.yml
+└── README.md
+
+
+## 🐳 Como Executar o Projeto
+
+### 1️⃣ Clone o repositório
+```bash
+git clone https://github.com/seu-usuario/PROJETO_FULLSTACK.git
+cd PROJETO_FULLSTACK
+
+### 🐳 Como Executar o Projeto
+
+#### 2️⃣ Crie o arquivo `.env` na raiz (baseado em `.env.example`)
+```bash
+# Variáveis de ambiente
+MYSQL_ROOT_PASSWORD=root
+MYSQL_DATABASE=tasks_db
+MYSQL_USER=appuser
+MYSQL_PASSWORD=apppassword
+JWT_SECRET=sua_chave_super_secreta
+
+### 🐳 Construa e inicie os containers
+
+```bash
+docker-compose up -d --build
+
+## 4️⃣ Acesse os serviços
+
+| Serviço | URL |
+|---------|-----|
+| 🌐 **Frontend (Vue + Nginx)** | http://localhost:8080 |
+| ⚙️ **Backend (API Express)** | http://localhost:3000 |
+| 🗄️ **phpMyAdmin** | http://localhost:8081 |
+| 🛢️ **MySQL** | localhost:3306 |
+
+---
+
+## 🧠 Exemplos de Rotas da API
+
+| Método | Rota | Descrição | Permissão |
+|--------|------|-----------|-----------|
+| POST   | /auth/login   | Login de usuário               | Pública        |
+| POST   | /tasks        | Cria uma nova tarefa           | user/admin     |
+| GET    | /tasks        | Lista tarefas (todas ou próprias) | user/admin |
+| PUT    | /tasks/:id    | Atualiza uma tarefa própria   | user/admin     |
+| DELETE | /tasks/:id    | Exclui tarefa (somente admin) | admin          |
+
+---
+
+## 🧰 Comandos Úteis
+
+```bash
+# Parar containers
+docker-compose down
+
+# Remover containers, volumes e imagens
+docker-compose down --volumes --rmi all
+
+# Ver logs em tempo real
+docker-compose logs -f
+
+## 🏁 Conclusão
+
+Este projeto foi desenvolvido com foco em **segurança, modularidade e escalabilidade**.  
+Com **Docker Compose**, toda a stack — backend, frontend, banco e phpMyAdmin — é inicializada com um único comando.
+
+> 💡 Ideal para quem busca uma base sólida para aplicações web seguras, com autenticação, autorização e gerenciamento de tarefas multiusuário.
+
+---
+
+### 👨‍💻 Autor
+
+**Flávio Luiz Bé**  
+💼 Desenvolvedor Fullstack  
+📧 flavio50k@protonmail.com  
+🌐 [github.com/flavio50k](https://github.com/flavio50k)
