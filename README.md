@@ -119,7 +119,6 @@ cd projeto-fullstack
 MYSQL_ROOT_PASSWORD=sua_senha_root_aqui
 MYSQL_DATABASE=projeto_db
 
-# NOVO: CHAVE SECRETA DO JWT (OBRIGATÓRIO: Use uma string longa e aleatória!)
 JWT_SECRET=uma_chave_secreta_muito_longa_e_aleatoria_para_proteger_os_tokens_em_producao
 JWT_EXPIRES_IN=1d
 
