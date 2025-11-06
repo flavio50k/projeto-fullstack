@@ -1,4 +1,5 @@
-# 🚀 Projeto Fullstack com Docker Compose — Node.js + Vue.js + MySQL + phpMyAdmin
+# 🚀 Projeto Fullstack com Docker Compose 
+## Node.js + Vue.js + MySQL + phpMyAdmin
 
 Um **projeto Fullstack completo e orquestrado com Docker Compose**, unindo **Node.js (Express)** no backend, **Vue.js 3 (com Nginx)** no frontend e **MySQL 8.0** como banco de dados, acompanhado do **phpMyAdmin** para administração.  
 Totalmente containerizado, modular e pronto para desenvolvimento ou implantação em produção.  
