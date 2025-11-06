@@ -107,19 +107,20 @@ PROJETO_FULLSTACK (WSL)
 
 ### 1️⃣ Clone o repositório
 ```bash
-git clone https://github.com/seu-usuario/PROJETO_FULLSTACK.git
-cd PROJETO_FULLSTACK
+git clone https://github.com/flavio50k/projeto-fullstack.git
+cd projeto-fullstack
 
 ### 🐳 Como Executar o Projeto
 
 #### 2️⃣ Crie o arquivo `.env` na raiz (baseado em `.env.example`)
 ```bash
 # Variáveis de ambiente
-MYSQL_ROOT_PASSWORD=root
-MYSQL_DATABASE=tasks_db
-MYSQL_USER=appuser
-MYSQL_PASSWORD=apppassword
-JWT_SECRET=sua_chave_super_secreta
+MYSQL_ROOT_PASSWORD=sua_senha_root_aqui
+MYSQL_DATABASE=projeto_db
+
+# NOVO: CHAVE SECRETA DO JWT (OBRIGATÓRIO: Use uma string longa e aleatória!)
+JWT_SECRET=uma_chave_secreta_muito_longa_e_aleatoria_para_proteger_os_tokens_em_producao
+JWT_EXPIRES_IN=1d
 
 ### 🐳 Construa e inicie os containers
 
