@@ -102,7 +102,7 @@ PROJETO_FULLSTACK (WSL)
 ├── .gitignore
 ├── docker-compose.yml
 └── README.md
-
+```
 
 ## 🐳 Como Executar o Projeto
 
@@ -110,6 +110,7 @@ PROJETO_FULLSTACK (WSL)
 ```bash
 git clone https://github.com/flavio50k/projeto-fullstack.git
 cd projeto-fullstack
+```
 
 ### 🐳 Como Executar o Projeto
 
@@ -121,11 +122,15 @@ MYSQL_DATABASE=projeto_db
 
 JWT_SECRET=uma_chave_secreta_muito_longa_e_aleatoria_para_proteger_os_tokens_em_producao
 JWT_EXPIRES_IN=1d
+```
 
 ### 🐳 Construa e inicie os containers
 
 ```bash
 docker-compose up -d --build
+```
+
+---
 
 ## 4️⃣ Acesse os serviços
 
@@ -134,9 +139,12 @@ docker-compose up -d --build
 | 🌐 **Frontend (Vue + Nginx)** | http://localhost:8080 |
 | ⚙️ **Backend (API Express)** | http://localhost:3000 |
 | 🗄️ **phpMyAdmin** | http://localhost:8081 |
-| 🛢️ **MySQL** | localhost:3306 |
+| 🛢️ **MySQL** | http://localhost:3306 |
+
+Todos os serviços são orquestrados pelo **Docker Compose**, garantindo isolamento, escalabilidade e portabilidade entre ambientes.
 
 ---
+
 
 ## 🧠 Exemplos de Rotas da API
 
@@ -161,13 +169,16 @@ docker-compose down --volumes --rmi all
 
 # Ver logs em tempo real
 docker-compose logs -f
+```
 
 ## 🏁 Conclusão
 
 Este projeto foi desenvolvido com foco em **segurança, modularidade e escalabilidade**.  
-Com **Docker Compose**, toda a stack — backend, frontend, banco e phpMyAdmin — é inicializada com um único comando.
+Com **Docker Compose**, toda a stack — backend, frontend, banco e phpMyAdmin —  
+é inicializada com um único comando.
 
-> 💡 Ideal para quem busca uma base sólida para aplicações web seguras, com autenticação, autorização e gerenciamento de tarefas multiusuário.
+> 💡 Ideal para quem busca uma base sólida para aplicações web seguras, com autenticação,  
+>     autorização e gerenciamento de tarefas multiusuário.
 
 ---
 
